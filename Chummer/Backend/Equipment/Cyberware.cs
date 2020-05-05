@@ -425,6 +425,38 @@ namespace Chummer.Backend.Equipment
             objXmlCyberware.TryGetStringFieldQuickly("limbslotcount", ref _strLimbSlotCount);
             if (!objXmlCyberware.TryGetStringFieldQuickly("altnotes", ref _strNotes))
                 objXmlCyberware.TryGetStringFieldQuickly("notes", ref _strNotes);
+
+            if (string.IsNullOrEmpty(Notes))
+            {
+                string strEnglishNameOnPage = Name;
+                string strNameOnPage = string.Empty;
+                // make sure we have something and not just an empty tag
+                if (objXmlCyberware.TryGetStringFieldQuickly("nameonpage", ref strNameOnPage) &&
+                    !string.IsNullOrEmpty(strNameOnPage))
+                    strEnglishNameOnPage = strNameOnPage;
+
+                string strGearNotes = CommonFunctions.GetTextFromPDF($"{Source} {Page}", strEnglishNameOnPage);
+
+                if (string.IsNullOrEmpty(strGearNotes) && GlobalOptions.Language != GlobalOptions.DefaultLanguage)
+                {
+                    string strTranslatedNameOnPage = DisplayName(GlobalOptions.Language);
+
+                    // don't check again it is not translated
+                    if (strTranslatedNameOnPage != _strName)
+                    {
+                        // if we found <altnameonpage>, and is not empty and not the same as english we must use that instead
+                        if (objXmlCyberware.TryGetStringFieldQuickly("altnameonpage", ref strNameOnPage)
+                            && !string.IsNullOrEmpty(strNameOnPage) && strNameOnPage != strEnglishNameOnPage)
+                            strTranslatedNameOnPage = strNameOnPage;
+
+                        Notes = CommonFunctions.GetTextFromPDF($"{Source} {DisplayPage(GlobalOptions.Language)}",
+                            strTranslatedNameOnPage);
+                    }
+                }
+                else
+                    Notes = strGearNotes;
+            }
+
             _blnInheritAttributes = objXmlCyberware["inheritattributes"] != null;
             _objGrade = objGrade;
             objXmlCyberware.TryGetStringFieldQuickly("ess", ref _strESS);
@@ -679,7 +711,7 @@ namespace Chummer.Backend.Equipment
                         ImprovementManager.ForcedValue = _strForced;
 
                     if (Bonus != null && !ImprovementManager.CreateImprovements(_objCharacter, objSource,
-                            _guiID.ToString("D"), Bonus, false, Rating, DisplayNameShort(GlobalOptions.Language)))
+                        _guiID.ToString("D"), Bonus, Rating, DisplayNameShort(GlobalOptions.Language)))
                     {
                         _guiID = Guid.Empty;
                         return;
@@ -717,8 +749,7 @@ namespace Chummer.Backend.Equipment
                         }
 
                         if ((intCount & 1) == 1 && !ImprovementManager.CreateImprovements(_objCharacter, objSource,
-                                _guiID.ToString("D") + "Pair", PairBonus, false, Rating,
-                                DisplayNameShort(GlobalOptions.Language)))
+                            _guiID.ToString("D") + "Pair", PairBonus, Rating, DisplayNameShort(GlobalOptions.Language)))
                         {
                             _guiID = Guid.Empty;
                             return;
@@ -1295,7 +1326,7 @@ namespace Chummer.Backend.Equipment
                     if (Bonus != null)
                     {
                         ImprovementManager.CreateImprovements(_objCharacter, _objImprovementSource,
-                            _guiID.ToString("D"), Bonus, false, Rating, DisplayNameShort(GlobalOptions.Language));
+                            _guiID.ToString("D"), Bonus, Rating, DisplayNameShort(GlobalOptions.Language));
                     }
 
                     if (!string.IsNullOrEmpty(ImprovementManager.SelectedValue) && string.IsNullOrEmpty(_strExtra))
@@ -1304,8 +1335,7 @@ namespace Chummer.Backend.Equipment
                     if (WirelessBonus != null)
                     {
                         ImprovementManager.CreateImprovements(_objCharacter, _objImprovementSource,
-                            _guiID.ToString("D"), WirelessBonus, false, Rating,
-                            DisplayNameShort(GlobalOptions.Language));
+                            _guiID.ToString("D"), WirelessBonus, Rating, DisplayNameShort(GlobalOptions.Language));
                     }
 
                     if (!string.IsNullOrEmpty(ImprovementManager.SelectedValue) && string.IsNullOrEmpty(_strExtra))
@@ -1339,8 +1369,7 @@ namespace Chummer.Backend.Equipment
                         if (intCount % 2 == 1)
                         {
                             ImprovementManager.CreateImprovements(_objCharacter, SourceType,
-                                InternalId + "WirelessPair", WirelessPairBonus, false, Rating,
-                                DisplayNameShort(GlobalOptions.Language));
+                                InternalId + "WirelessPair", WirelessPairBonus, Rating, DisplayNameShort(GlobalOptions.Language));
                         }
                     }
                     else if (PairBonus != null)
@@ -1371,7 +1400,7 @@ namespace Chummer.Backend.Equipment
                         if ((intCount & 1) == 1)
                         {
                             ImprovementManager.CreateImprovements(_objCharacter, SourceType, InternalId + "Pair",
-                                PairBonus, false, Rating, DisplayNameShort(GlobalOptions.Language));
+                                PairBonus, Rating, DisplayNameShort(GlobalOptions.Language));
                         }
                     }
                 }
@@ -2000,8 +2029,7 @@ namespace Chummer.Backend.Equipment
                 if (WirelessBonus?.InnerText != null)
                 {
                     ImprovementManager.CreateImprovements(_objCharacter, _objImprovementSource,
-                        _guiID.ToString("D") + "Wireless", WirelessBonus, false, Rating,
-                        DisplayNameShort(GlobalOptions.Language));
+                        _guiID.ToString("D") + "Wireless", WirelessBonus, Rating, DisplayNameShort(GlobalOptions.Language));
                 }
 
                 if (!string.IsNullOrEmpty(ImprovementManager.SelectedValue) && string.IsNullOrEmpty(_strExtra))
@@ -2041,8 +2069,7 @@ namespace Chummer.Backend.Equipment
                     }
 
                     ImprovementManager.CreateImprovements(_objCharacter, SourceType,
-                        _guiID.ToString("D") + "WirelessPair", WirelessPairBonus, false, Rating,
-                        DisplayNameShort(GlobalOptions.Language));
+                        _guiID.ToString("D") + "WirelessPair", WirelessPairBonus, Rating, DisplayNameShort(GlobalOptions.Language));
                 }
 
                 foreach (Cyberware objLoopCyberware in lstPairableCyberwares)
@@ -2059,8 +2086,7 @@ namespace Chummer.Backend.Equipment
                     {
                         ImprovementManager.CreateImprovements(_objCharacter, objLoopCyberware.SourceType,
                             objLoopCyberware.InternalId + "WirelessPair",
-                            objLoopCyberware.WirelessPairBonus, false, objLoopCyberware.Rating,
-                            objLoopCyberware.DisplayNameShort(GlobalOptions.Language));
+                            objLoopCyberware.WirelessPairBonus, objLoopCyberware.Rating, objLoopCyberware.DisplayNameShort(GlobalOptions.Language));
                     }
 
                     intCount -= 1;
@@ -2126,8 +2152,7 @@ namespace Chummer.Backend.Equipment
                     {
                         ImprovementManager.CreateImprovements(_objCharacter, objLoopCyberware.SourceType,
                             objLoopCyberware.InternalId + "WirelessPair",
-                            objLoopCyberware.WirelessPairBonus, false, objLoopCyberware.Rating,
-                            objLoopCyberware.DisplayNameShort(GlobalOptions.Language));
+                            objLoopCyberware.WirelessPairBonus, objLoopCyberware.Rating, objLoopCyberware.DisplayNameShort(GlobalOptions.Language));
                     }
 
                     intCount -= 1;
@@ -2204,7 +2229,7 @@ namespace Chummer.Backend.Equipment
                     if ((intCount & 1) == 1)
                     {
                         ImprovementManager.CreateImprovements(_objCharacter, SourceType, InternalId + "Pair", PairBonus,
-                            false, Rating, DisplayNameShort(GlobalOptions.Language));
+                            Rating, DisplayNameShort(GlobalOptions.Language));
                     }
                 }
             }
@@ -2247,8 +2272,8 @@ namespace Chummer.Backend.Equipment
                         if (intCount > 0 && (intCount & 1) == 0)
                         {
                             ImprovementManager.CreateImprovements(_objCharacter, objLoopCyberware.SourceType,
-                                objLoopCyberware.InternalId + "Pair", objLoopCyberware.PairBonus, false,
-                                objLoopCyberware.Rating, objLoopCyberware.DisplayNameShort(GlobalOptions.Language));
+                                objLoopCyberware.InternalId + "Pair", objLoopCyberware.PairBonus, objLoopCyberware.Rating,
+                                objLoopCyberware.DisplayNameShort(GlobalOptions.Language));
                         }
 
                         intCount -= 1;
@@ -4129,8 +4154,8 @@ namespace Chummer.Backend.Equipment
                     if (intCount > 0 && (intCount & 1) == 0)
                     {
                         ImprovementManager.CreateImprovements(_objCharacter, objLoopCyberware.SourceType,
-                            objLoopCyberware.InternalId + "Pair", objLoopCyberware.PairBonus, false,
-                            objLoopCyberware.Rating, objLoopCyberware.DisplayNameShort(GlobalOptions.Language));
+                            objLoopCyberware.InternalId + "Pair", objLoopCyberware.PairBonus, objLoopCyberware.Rating,
+                            objLoopCyberware.DisplayNameShort(GlobalOptions.Language));
                     }
 
                     intCount -= 1;
@@ -4176,8 +4201,8 @@ namespace Chummer.Backend.Equipment
                     if (intCount > 0 && intCount % 2 == 0)
                     {
                         ImprovementManager.CreateImprovements(_objCharacter, objLoopCyberware.SourceType,
-                            objLoopCyberware.InternalId + "WirelessPair", objLoopCyberware.WirelessPairBonus, false,
-                            objLoopCyberware.Rating, objLoopCyberware.DisplayNameShort(GlobalOptions.Language));
+                            objLoopCyberware.InternalId + "WirelessPair", objLoopCyberware.WirelessPairBonus, objLoopCyberware.Rating,
+                            objLoopCyberware.DisplayNameShort(GlobalOptions.Language));
                     }
 
                     intCount -= 1;
